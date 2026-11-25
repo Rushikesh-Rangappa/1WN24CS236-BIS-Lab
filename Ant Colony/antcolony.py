@@ -396,279 +396,56 @@ def ant_colony_optimization(active_bins):
     return best_routes, best_distance
 
 
+
 # ------------------------------------------------------------
-# 7. SIMULATE DYNAMIC WASTE COLLECTION
+# 7. DYNAMIC WASTE COLLECTION
 # ------------------------------------------------------------
 
 collected_bins = set()
-
 all_routes = []
 
-total_distance = 0
+for phase_number, new_bins in enumerate(arrival_phases, 1):
 
-print("\nDYNAMIC WASTE COLLECTION SIMULATION")
+    active_bins = sorted(set(new_bins) - collected_bins)
 
-for phase_number, new_bins in enumerate(
-    arrival_phases,
-    start=1
-):
+    routes, distance = ant_colony_optimization(active_bins)
 
-    print("\n" + "=" * 50)
-
-    print(f"PHASE {phase_number}")
-
-    print("=" * 50)
-
-    print("New bins requiring collection:", new_bins)
-
-    # Add newly full bins to the active collection list
-    active_bins = sorted(
-        set(new_bins) - collected_bins
-    )
-
-    # Optimize routes for the active bins
-    routes, phase_distance = ant_colony_optimization(
-        active_bins
-    )
-
-    # Display vehicle routes
-    for vehicle_number, route in enumerate(
-        routes,
-        start=1
-    ):
-
-        full_route = [0] + route + [0]
-
-        route_load = calculate_route_load(route)
-
-        print(f"\nVehicle {vehicle_number}")
-
-        print("Route:", full_route)
-
-        print("Waste collected:", route_load)
-
-        print(
-            "Distance:",
-            round(
-                calculate_route_distance(route),
-                2
-            ),
-            "km"
-        )
-
-    # Update collected bins
     collected_bins.update(active_bins)
-
-    total_distance += phase_distance
-
     all_routes.append(routes)
 
-    # Calculate operating costs
-    phase_time = (
-        phase_distance / AVERAGE_SPEED
-    ) * 60
-
-    fuel_used = phase_distance * FUEL_RATE
-
-    fuel_cost = fuel_used * FUEL_PRICE
-
-    print("\nPhase Summary")
-
-    print(
-        "Total Distance:",
-        round(phase_distance, 2),
-        "km"
-    )
-
-    print(
-        "Estimated Collection Time:",
-        round(phase_time, 2),
-        "minutes"
-    )
-
-    print(
-        "Estimated Fuel Consumption:",
-        round(fuel_used, 2),
-        "liters"
-    )
-
-    print(
-        "Estimated Fuel Cost:",
-        round(fuel_cost, 2),
-        "INR"
-    )
-
-    print(
-        "Bins Collected:",
-        len(collected_bins),
-        "/",
-        NUM_BINS
-    )
-
+    print(f"\nPhase {phase_number}: {len(active_bins)} new bins")
+    print(f"Distance: {distance:.2f} km")
 
 # ------------------------------------------------------------
 # 8. FINAL RESULTS
 # ------------------------------------------------------------
 
-total_time = (
-    total_distance / AVERAGE_SPEED
-) * 60
+final_routes = all_routes[-1]
 
-total_fuel = total_distance * FUEL_RATE
-
-total_cost = total_fuel * FUEL_PRICE
-
-print("\n" + "=" * 50)
-
-print("FINAL WASTE COLLECTION RESULTS")
-
-print("=" * 50)
-
-print(
-    "Total Collection Points:",
-    NUM_BINS
+total_distance = sum(
+    calculate_total_distance(routes)
+    for routes in all_routes
 )
 
-print(
-    "Total Bins Collected:",
-    len(collected_bins)
-)
+total_time = total_distance / AVERAGE_SPEED * 60
+fuel_cost = total_distance * FUEL_RATE * FUEL_PRICE
 
-print(
-    "Total Distance:",
-    round(total_distance, 2),
-    "km"
-)
+print("\nFINAL RESULTS")
+print("-" * 30)
 
-print(
-    "Estimated Time:",
-    round(total_time, 2),
-    "minutes"
-)
+for i, route in enumerate(final_routes, 1):
+    print(f"Vehicle {i}: {[0] + route + [0]}")
 
-print(
-    "Estimated Fuel Consumption:",
-    round(total_fuel, 2),
-    "liters"
-)
-
-print(
-    "Estimated Fuel Cost:",
-    round(total_cost, 2),
-    "INR"
-)
-
+print(f"\nTotal bins collected: {len(collected_bins)}")
+print(f"Total distance: {total_distance:.2f} km")
+print(f"Estimated time: {total_time:.2f} minutes")
+print(f"Estimated fuel cost: Rs. {fuel_cost:.2f}")
 
 # ------------------------------------------------------------
-# 9. VISUALIZE THE OPTIMIZED ROUTES
+# 9. FINAL ROUTE VISUALIZATION
 # ------------------------------------------------------------
 
-def plot_routes(routes, title):
-
-    plt.figure(figsize=(10, 8))
-
-    # Plot depot
-    plt.scatter(
-        depot[0],
-        depot[1],
-        color="red",
-        marker="s",
-        s=200,
-        label="Depot"
-    )
-
-    plt.text(
-        depot[0] + 0.2,
-        depot[1] + 0.2,
-        "Depot"
-    )
-
-    # Plot all waste collection points
-    plt.scatter(
-        bin_coordinates[:, 0],
-        bin_coordinates[:, 1],
-        color="black",
-        s=60,
-        label="Waste Bins"
-    )
-
-    # Label bins
-    for i, coord in enumerate(
-        bin_coordinates,
-        start=1
-    ):
-
-        plt.text(
-            coord[0] + 0.15,
-            coord[1] + 0.15,
-            str(i),
-            fontsize=9
-        )
-
-    # Plot vehicle routes
-    colors = [
-        "blue",
-        "green",
-        "orange"
-    ]
-
-    for vehicle_number, route in enumerate(
-        routes,
-        start=1
-    ):
-
-        if len(route) == 0:
-            continue
-
-        full_route = [0] + route + [0]
-
-        x = [
-            all_coordinates[node][0]
-            for node in full_route
-        ]
-
-        y = [
-            all_coordinates[node][1]
-            for node in full_route
-        ]
-
-        plt.plot(
-            x,
-            y,
-            marker="o",
-            linewidth=2,
-            color=colors[
-                vehicle_number - 1
-            ],
-            label=f"Vehicle {vehicle_number}"
-        )
-
-    plt.title(title)
-
-    plt.xlabel("X Coordinate (km)")
-
-    plt.ylabel("Y Coordinate (km)")
-
-    plt.grid(True)
-
-    plt.legend()
-
-    plt.show()
-
-
-# Plot the final phase routes
 plot_routes(
-    all_routes[-1],
-    "Optimized Waste Collection Routes - Final Phase"
+    final_routes,
+    "Final Waste Collection Routes"
 )
-
-# Plot the routes from every phase
-for phase_number, routes in enumerate(
-    all_routes,
-    start=1
-):
-
-    plot_routes(
-        routes,
-        f"Dynamic Route Optimization - Phase {phase_number}"
-    )
